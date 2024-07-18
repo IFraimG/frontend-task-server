@@ -13,38 +13,63 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/checkfolder/:ip", async (req, res) => {
   let ip = req.params.ip;
   if (ip == null) res.sendStatus(500)
+  else {
+    fs.stat(`files/${ip}`, err => {
+      if (!err) {
+        let arrayProjects = []
 
-  fs.stat(`files/${ip}`, (err) => {
-    if (!err) {
-      let arrayProjects = []
+        let files = fs.readdirSync("files/" + String(ip))
+        files.map(filename => {
+          let file = fs.readFileSync(`files/${String(ip)}/${filename}`)
+          arrayProjects.push(JSON.parse(file))
+        })
+        
+        res.send(arrayProjects)
+      } else if (err.code === "ENOENT") {
+        fs.mkdirSync("files/" + ip);
 
-      let files = fs.readdirSync("files/" + String(ip))
-      files.map(filename => {
-        let file = fs.readFileSync(`files/${String(ip)}/${filename}`)
-        arrayProjects.push(JSON.parse(file))
-      })
-      
-      res.send(arrayProjects)
-    } else if (err.code === "ENOENT") {
-      fs.mkdirSync("files/" + ip);
+        let firstProject = { title: "Тестовый проект", id: generateID([]), tasks: [{ description: "Погладить барсика", id: generateID([]), isDone: false, miniTasks: [] }] }
+        let pathFile = `files/${String(ip)}/${firstProject.title}.json`
 
-      let firstProject = { title: "Project1", id: "barrrrr", tasks: [{ description: "Пойти на работу", id: "foo11111", isDone: false, miniTasks: [] }] }
-      let pathFile = `files/${String(ip)}/${firstProject.title}.json`
+        fs.open(pathFile, "w", err => {
+          if (err) throw err
+          console.log("file has created");
+        })
 
-      fs.open(pathFile, "w", err => {
-        if (err) throw err
+        fs.appendFile(pathFile, JSON.stringify(firstProject), err => {
+          if (err) throw err
+          console.log("data has been added");
+        })
+
+        res.send([firstProject])
+      }
+    });
+  }
+});
+
+app.post("/create", async (req, res) => {
+  let ip = req.body.ip
+  if (ip == null) res.sendStatus(500)
+  else {
+    let err = fs.statSync(`files/${ip}`)
+    if (err.code === "ENOENT") fs.mkdirSync("files/" + ip);
+
+    let newProject = { title: `Новый проект ${generateID([])}`, id: generateID([]), tasks: [] }
+    let pathFile = `files/${String(ip)}/${newProject.title}.json`
+
+    fs.open(pathFile, "w", err => {
+      if (err) throw err
         console.log("file has created");
-      })
+    })
 
-      fs.appendFile(pathFile, JSON.stringify(firstProject), err => {
+      fs.appendFile(pathFile, JSON.stringify(newProject), err => {
         if (err) throw err
         console.log("data has been added");
       })
 
-      res.send([firstProject])
-    }
-  });
-});
+      res.send(newProject)
+  }
+})
 
 app.get("/findProject/:ip/:id", async (req, res) => {
   let ip = req.params.ip
@@ -59,6 +84,27 @@ app.get("/findProject/:ip/:id", async (req, res) => {
       let data = JSON.parse(file)
       if (data.id == projectID) res.send(data)
     })
+  }
+})
+
+app.get("/getProjectsID/:ip/:excpTitle", async (req, res) => {
+  let ip = req.params.ip
+
+  let err = fs.statSync(`files/${ip}`)
+  if (err.code === "ENOENT") res.sendStatus(404)
+  else {
+    let files = fs.readdirSync(`files/${String(ip)}`)
+
+    let arr = []
+    files.map(filename => {
+      if (filename != req.params.excpTitle + ".json") {
+        let file = fs.readFileSync(`files/${String(ip)}/${filename}`)
+        let data = JSON.parse(file)
+        arr.push(data)
+      }
+    })
+
+    res.send(arr)
   }
 })
 
