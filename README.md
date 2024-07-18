@@ -18,3 +18,5 @@ mkdir files
 
 npm run start
 ```
+
+[Тестовое задание](https://github.com/KazanExpress/frontend-test-task)
